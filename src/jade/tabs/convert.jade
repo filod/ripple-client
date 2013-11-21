@@ -1,5 +1,5 @@
 include ../menu/wallet.jade
-section.panel.content(ng-controller="ConvertCtrl")
+section.col-xs-12.col-md-10.content(ng-controller="ConvertCtrl")
 
   //- Disconnected
 
@@ -9,46 +9,55 @@ section.panel.content(ng-controller="ConvertCtrl")
   group.disconnected(ng-hide="!connected || loadState.account")
     p.literal Loading...
 
+  .unfunded(ng-hide='account.Balance || !connected')
+    p.literal(rp-l10n="err-you-must-be-funded-before-you-can-send-money") You have to be funded before you can convert money
+    p: a.btn.btn-default(href="#/balance") Back to balance
+
   //- Connected
 
   form.mode-form(name="convertForm", id="convertForm", ng-show='mode=="form" && account.Balance', ng-submit='convert_prepared()')
     p.literal Convert one currency into another.
     hr
-    label(for='amount') Receive
-    .amount
-      input.value#amount(
-      name='amount', type='text'
-      ng-model='convert.amount'
-      required
-      rp-autofill='$routeParams.amount'
-      rp-autofill-amount
-      rp-amount
-      rp-amount-positive)
-      input.currency#amount_currency(
-      name='amount_currency', type='text'
-      rp-combobox="currency_query", rp-combobox-select
-      ng-model='convert.currency'
-      rp-autofill='$routeParams.amount'
-      rp-autofill-currency)
-    .errorGroup(rp-errors='amount')
-      .error(rp-error-on='required')
-        | Please enter an amount.
-      .error(rp-error-on='rpAmount')
-        | Not a valid amount.
-      .error(rp-error-on='rpAmountPositive')
-        | Please enter an amount greater than zero.
-    p.literal(ng-show="convert.path_status == 'waiting'") Please enter the conversion details.
-    p.literal.throbber(ng-show="convert.path_status == 'pending'") Calculating...
-    p.literal(ng-show="convert.path_status == 'no-path' && convert.currency_code != 'XRP'") No path found!
-    p.literal(ng-show="convert.path_status == 'error'") Error while calculating path
-    .currency_sets(ng-if="convert.path_status == 'done'")
-      .label Convert
+    .form-group
+      label(for='amount') Receive
+      .row.row-padding-small.amount
+        .col-md-4
+          input.value.form-control#amount(
+          name='amount', type='text'
+          ng-model='convert.amount'
+          required
+          rp-autofill='$routeParams.amount'
+          rp-autofill-amount
+          rp-amount
+          rp-amount-positive)
+        .col-md-3
+          input.currency.form-control#amount_currency(
+          name='amount_currency', type='text'
+          rp-combobox="currency_query", rp-combobox-select
+          ng-model='convert.currency'
+          rp-autofill='$routeParams.amount'
+          rp-autofill-currency)
+      .errorGroup(rp-errors='amount')
+        .error(rp-error-on='required')
+          | Please enter an amount.
+        .error(rp-error-on='rpAmount')
+          | Not a valid amount.
+        .error(rp-error-on='rpAmountPositive')
+          | Please enter an amount greater than zero.
+      p.literal(ng-show="convert.path_status == 'waiting'") Please enter the conversion details.
+      p.literal.throbber(ng-show="convert.path_status == 'pending'") Calculating...
+      p.literal(ng-show="convert.path_status == 'no-path' && convert.currency_code != 'XRP'")
+        | Sorry! Cannot convert {{convert.amount}} {{convert.currency}}. Please make sure your account has enough funds.
+      p.literal(ng-show="convert.path_status == 'error'") Error while calculating path
+
+    .currency_sets.row.row-padding-small(ng-if="convert.path_status == 'done'")
+      .col-xs-12 Convert
       ul
-        li(ng-repeat="alt in convert.alternatives")
-          p
+        li.col-xs-12.col-sm-6.col-md-4(ng-repeat="alt in convert.alternatives")
+          .am
             span.amnt {{alt.amount | rpamount:{rel_precision: 4, rel_min_precision: 2} }}
             span.currency {{alt.amount | rpcurrency }}
-          button.btn.btn-success(type="submit", ng-disabled='convertForm.$invalid', ng-click="convert.alt = alt") Convert {{ alt.amount | rpcurrency }}
+          button.btn.btn-block.btn-success(type="submit", ng-disabled='convertForm.$invalid', ng-click="convert.alt = alt") Convert {{ alt.amount | rpcurrency }}
 
   //- N2. Waiting for path
 
@@ -67,25 +76,26 @@ section.panel.content(ng-controller="ConvertCtrl")
       span.value {{convert.amount_feedback | rpamount}}&nbsp;
       span.currency {{convert.amount_feedback | rpcurrency}}
     p.literal You will pay at most
-    p.convertmax_feedback
+    p.amount_feedback
       span.value {{convert.alt.amount | rpamount}}&nbsp;
       span.currency {{convert.alt.amount | rpcurrency}} &nbsp;
       span &plusmn; 1%
     p.literal Are you sure?
-    div
-      p.submitsection
-        button.btn.back(ng-click='cancelConfirm()') &laquo; Back
-        button.btn.btn-success.submit(
-        type='submit'
-        ng-click='convert_confirmed()'
-        ng-disabled='confirm_wait') Confirm
+    .row.row-padding-small
+      .col-xs-6.col-sm-4.col-md-3.col-lg-2
+        button.btn.btn-block.btn-default.back(ng-click='cancelConfirm()') &laquo; Back
+      .col-xs-6.col-sm-4.col-md-3.col-lg-2
+          button.btn.btn-block.btn-success.submit(
+          type='submit'
+          ng-click='convert_confirmed()'
+          ng-disabled='confirm_wait') Confirm
 
   //- N4. Waiting for transaction result page
 
   group.mode-sending(ng-show='mode=="sending" && account.Balance')
     p.throbber.literal Sending transaction to Ripple network
     hr
-    p: button.btn(ng-click='reset()') Stop waiting
+    p: button.btn.btn-default(ng-click='reset()') Stop waiting
 
   //- N5. Error page
   group.mode-error(ng-show='mode=="error" && account.Balance')
@@ -98,7 +108,7 @@ section.panel.content(ng-controller="ConvertCtrl")
           | Make sure you are connected to the Internet and try again later.
         p.literal Before trying again, please ensure that the transaction has
           | not been executed already.
-    p: button.btn(ng-click='cancelConfirm()') &laquo; Back
+    p: button.btn.btn-default(ng-click='cancelConfirm()') &laquo; Back
 
   //- N6. Confirmed page
 
@@ -141,10 +151,16 @@ section.panel.content(ng-controller="ConvertCtrl")
           | You have no trust line in this currency.
         span(ng-switch-default)
           | Your transaction failed to clear, reason: {{engine_result_message}}
+    group.result-failed(ng-show='tx_result=="local"')
+      h2.tx-status Transaction failed!
+      p(ng-switch on="engine_result")
+        span(ng-switch-when="telINSUF_FEE_P")
+          | The particular server you sent the transaction to was too busy to forward or process
+          | your transaction at the fee you included in it.
     group.actions
       hr
       div(class="actionLink")
-        a(ng-click="reset()") Do another conversion
+        a(href="", ng-click="reset()") Do another conversion
       div(class="actionLink")
-        a(ng-click="reset_goto('balance')") Back to balance
+        a(href="", ng-click="reset_goto('balance')") Back to balance
       hr

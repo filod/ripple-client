@@ -18,31 +18,30 @@ OptionsTab.prototype.generateHtml = function ()
 
 OptionsTab.prototype.angular = function(module)
 {
-  module.controller('OptionsCtrl', ['$scope', '$rootScope', 'rpId',
-                                    function ($scope, $rootScope, $id)
+  module.controller('OptionsCtrl', ['$scope', '$rootScope', 'rpId', 'rpTracker',
+                                    function ($scope, $rootScope, $id, $rpTracker)
   {
-    $scope.socketIp = Options.server.websocket_ip;
-    $scope.socketPort = Options.server.websocket_port;
-    $scope.socketSsl = Options.server.websocket_ssl;
+    $scope.servers = Options.server.servers;
+    $scope.mixpanel = Options.mixpanel;
     $scope.blobIp = Options.blobvault;
 
     $scope.save = function () {
       // Save in local storage
       store.set('ripple_settings', JSON.stringify({
-        server: {
-          "trusted" : true,
-          "websocket_ip" : $scope.socketIp,
-          "websocket_port" : $scope.socketPort,
-          "websocket_ssl" : $scope.socketSsl
+        server : {
+          'servers' : $scope.servers
         },
         blobvault : $scope.blobIp,
         persistent_auth : Options.persistent_auth,
-        transactions_per_page: Options.transactions_per_page
+        transactions_per_page : Options.transactions_per_page,
+        mixpanel : $scope.mixpanel
       }));
 
       // Reload
       location.reload();
-    }
+    };
+
+    $rpTracker.track('Page View', {'Page Name': 'Options'});
   }]);
 };
 

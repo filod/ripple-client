@@ -1,9 +1,7 @@
-nav(rp-off-canvas-menu)
+nav.col-xs-12.col-md-2
   h2(ng-bind="$route.current.tabName | rpucfirst")
   ul
     li(ng-class="{active: $route.current.tabName == 'trust'}")
-      a(href="#/trust") Trust
-    li(ng-class="{active: $route.current.tabName == 'trade'}")
-      a(href="#/trade") Trade
+      a(href="#/trust", rp-l10n) Trust
     li(ng-class="{active: $route.current.tabName == 'options'}")
-      a(href="#/options") Options
+      a(href="#/options", rp-l10n) Options

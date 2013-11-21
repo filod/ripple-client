@@ -19,10 +19,10 @@ LoginTab.prototype.generateHtml = function ()
 LoginTab.prototype.angular = function (module) {
   module.controller('LoginCtrl', ['$scope', '$element', '$routeParams',
                                   '$location', 'rpId', '$rootScope',
-                                  'rpPopup', '$timeout',
+                                  'rpPopup', '$timeout', 'rpTracker',
                                   function ($scope, $element, $routeParams,
                                             $location, $id, $rootScope,
-                                            popup, $timeout)
+                                            popup, $timeout, $rpTracker)
   {
     if ($id.loginStatus) {
       $location.path('/balance');
@@ -122,8 +122,19 @@ LoginTab.prototype.angular = function (module) {
               $scope.backendMessages.push({'backend': "ID", 'message': err.message});
             }
 
+            $rpTracker.track('Login', {
+              'Status': 'error',
+              'Message': err.message,
+              'Blob': $scope.blobBackendCollection.something.name
+            });
+
             return;
           }
+
+          $rpTracker.track('Login', {
+            'Status': 'success',
+            'Blob': $scope.blobBackendCollection.something.name
+          });
 
           $scope.status = '';
           if ($routeParams.tab) {
@@ -138,6 +149,8 @@ LoginTab.prototype.angular = function (module) {
       $scope.error = '';
       $scope.status = 'Fetching wallet...';
     };
+
+    $rpTracker.track('Page View', {'Page Name': 'Login'});
   }]);
 
   /**

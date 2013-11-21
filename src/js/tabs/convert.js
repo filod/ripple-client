@@ -20,8 +20,8 @@ ConvertTab.prototype.generateHtml = function ()
 
 ConvertTab.prototype.angular = function (module)
 {
-  module.controller('ConvertCtrl', ['$scope', '$timeout', '$routeParams', 'rpId', 'rpNetwork',
-    function ($scope, $timeout, $routeParams, $id, $network)
+  module.controller('ConvertCtrl', ['$scope', '$timeout', '$routeParams', 'rpId', 'rpNetwork', 'rpTracker',
+    function ($scope, $timeout, $routeParams, $id, $network, $rpTracker)
     {
       if (!$id.loginStatus) return $id.goId();
 
@@ -258,12 +258,17 @@ ConvertTab.prototype.angular = function (module)
           case 'tef':
             $scope.tx_result = "failure";
             break;
+          case 'tel':
+            $scope.tx_result = "local";
+            break;
           default:
             console.warn("Unhandled engine status encountered!");
         }
       }
 
       $scope.reset();
+
+      $rpTracker.track('Page View', {'Page Name': 'Convert'});
     }]);
 
   /**
@@ -278,13 +283,9 @@ ConvertTab.prototype.angular = function (module)
         if (!ctrl) return;
 
         var validator = function(value) {
-          if (!webutil.getContact($scope.userBlob.data.contacts,value)) {
-            ctrl.$setValidity('unique', true);
-            return value;
-          } else {
-            ctrl.$setValidity('unique', false);
-            return;
-          }
+          var unique = !webutil.getContact($scope.userBlob.data.contacts,value);
+          ctrl.$setValidity('unique', unique);
+          if (unique) return value;
         };
 
         ctrl.$formatters.push(validator);
@@ -292,40 +293,6 @@ ConvertTab.prototype.angular = function (module)
 
         attr.$observe('unique', function() {
           validator(ctrl.$viewValue);
-        });
-      }
-    };
-  });
-
-  /**
-   * Don't allow the user to send XRP to himself
-   */
-  module.directive('rpXrpToMe', function () {
-    return {
-      restrict: 'A',
-      require: '?ngModel',
-      link: function (scope, elm, attr, ctrl) {
-        var xrpWidget = elm.inheritedData('$formController')[attr.rpXrpToMe];
-
-        ctrl.$parsers.unshift(function(value) {
-          var contact = webutil.getContact(scope.userBlob.data.contacts,value);
-
-          if (value) {
-            if ((contact && contact.address === scope.userBlob.data.account_id) || scope.userBlob.data.account_id === value) {
-              if (scope.convert.currency === xrpWidget.$viewValue) {
-                ctrl.$setValidity('rpXrpToMe', false);
-                return;
-              }
-            }
-          }
-
-          ctrl.$setValidity('rpXrpToMe', true);
-          return value;
-        });
-
-        xrpWidget.$parsers.unshift(function(value) {
-          ctrl.$setValidity('rpXrpToMe', value === ctrl.$viewValue);
-          return value;
         });
       }
     };

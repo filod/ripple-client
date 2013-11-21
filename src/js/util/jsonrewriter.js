@@ -98,7 +98,7 @@ var JsonRewriter = module.exports = {
    * processTxn returns main purpose of transaction and side effects.
    *
    * Main purpose
-   *  - Payment (sent/received)
+   *  - Payment (sent/received/convert)
    *  - TrustSet (trusting/trusted)
    *  - OfferCreate (offernew)
    *
@@ -123,8 +123,21 @@ var JsonRewriter = module.exports = {
         case 'Payment':
           var amount = ripple.Amount.from_json(tx.Amount);
 
-          transaction.type = tx.Account === account ? 'sent' : 'received';
-          transaction.counterparty = tx.Account === account ? tx.Destination : tx.Account;
+          if (tx.Account === account) {
+            if (tx.Destination === account) {
+              transaction.type = 'convert';
+              transaction.spent = ripple.Amount.from_json(tx.SendMax);
+            }
+            else {
+              transaction.type = 'sent';
+              transaction.counterparty = tx.Destination;
+            }
+          }
+          else {
+            transaction.type = 'received';
+            transaction.counterparty = tx.Account;
+          }
+
           transaction.amount = amount;
           transaction.currency = amount.currency().to_json();
           break;
@@ -147,6 +160,10 @@ var JsonRewriter = module.exports = {
           break;
 
         case 'AccountSet':
+          // Ignore empty accountset transactions. (Used to sync sequence numbers)
+          if (meta.AffectedNodes.length === 1 && _.size(meta.AffectedNodes[0].ModifiedNode.PreviousFields) === 2)
+            break;
+
           transaction.type = 'accountset';
           break;
 
@@ -323,6 +340,10 @@ var JsonRewriter = module.exports = {
               obj.transaction.gets = fieldSet.TakerGets;
               obj.transaction.pays = fieldSet.TakerPays;
             }
+
+            // Flags
+            if (node.fields.Flags)
+              effect.flags = node.fields.Flags;
           }
 
           effect.seq = +node.fields.Sequence;

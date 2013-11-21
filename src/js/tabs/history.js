@@ -17,8 +17,8 @@ HistoryTab.prototype.generateHtml = function ()
 };
 
 HistoryTab.prototype.angular = function (module) {
-  module.controller('HistoryCtrl', ['$scope', 'rpId', 'rpNetwork',
-                                     function ($scope, $id, $network)
+  module.controller('HistoryCtrl', ['$scope', 'rpId', 'rpNetwork', 'rpTracker',
+                                     function ($scope, $id, $network, $rpTracker)
   {
     if (!$id.loginStatus) return $id.goId();
 
@@ -42,32 +42,33 @@ HistoryTab.prototype.angular = function (module) {
     // Currencies from history
     var historyCurrencies = [];
 
-    if (store.get('ripple_history_types')) {
-      $scope.types = store.get('ripple_history_types');
-    } else {
-      $scope.types = [
-        {
-          'name': 'sent',
-          'types': ['sent'],
-          'checked':true
-        }, {
-          'name': 'received',
-          'types': ['received'],
-          'checked':true
-        }, {
-          'name': 'trusts',
-          'types': ['trusting','trusted'],
-          'checked':true
-        }, {
-          'name': 'offers',
-          'types': ['offernew','offercancel'],
-          'checked':true
-        }, {
-          'name': 'other',
-          'types': ['accountset'],
-          'checked':true
-        }
-      ];
+    $scope.types = {
+      sent: {
+        'types': ['sent'],
+        'checked': true
+      },
+      received: {
+        'types': ['received'],
+        'checked': true
+      },
+      trusts: {
+        'types': ['trusting','trusted'],
+        'checked': true
+      },
+      offers: {
+        'types': ['offernew','offercancel','convert'],
+        'checked': true
+      },
+      other: {
+        'types': ['accountset'],
+        'checked': true
+      }
+    };
+
+    $scope.orderedTypes = ['sent','received','trusts','offers','other'];
+
+    if (store.get('ripple_history_type_selections')) {
+      $scope.types = $.extend(true,$scope.types,store.get('ripple_history_type_selections'));
     }
 
     // Filters
@@ -77,7 +78,7 @@ HistoryTab.prototype.angular = function (module) {
       $scope.filters = {
         'currencies_is_active': false, // we do the currency filter only if this is true, which happens when at least one currency is off
         'currencies': {},
-        'types': ['sent','received','trusting','trusted','offernew','offercancel'],
+        'types': ['sent','received','convert','trusting','trusted','offernew','offercancel'],
         'minimumAmount': 0.000001
       };
     }
@@ -159,12 +160,19 @@ HistoryTab.prototype.angular = function (module) {
     // Types filter has been changed
     $scope.$watch('types', function(){
       var arr = [];
-      for (var i=0;i<$scope.types.length;i++)
-        if ($scope.types[i].checked)
-          arr = arr.concat($scope.types[i].types);
+      var checked = {};
+      _.each($scope.types, function(type,index){
+        if (type.checked) {
+          arr = arr.concat(type.types);
+        }
+
+        checked[index] = {
+          checked: !!type.checked
+        };
+      });
       $scope.filters.types = arr;
 
-      store.set('ripple_history_types', $scope.types);
+      store.set('ripple_history_type_selections', checked);
     }, true);
 
     $scope.$watch('filters', function(){
@@ -212,6 +220,7 @@ HistoryTab.prototype.angular = function (module) {
         var currencies = _.map($scope.filters.currencies,function(obj,key){return obj.checked ? key : false});
         $scope.history.forEach(function(event)
         {
+
           // Calculate dateMin/dateMax. Used in date filter view
           if (!$scope.dateMinView) {
             if (!dateMin || dateMin > event.date)
@@ -310,8 +319,8 @@ HistoryTab.prototype.angular = function (module) {
         });
 
         if ($scope.historyShow.length && !$scope.dateMinView) {
-          $scope.dateMinView = new Date(dateMin);
-          $scope.dateMaxView = new Date(dateMax);
+          setValidDateOnScopeOrNullify('dateMinView', dateMin);
+          setValidDateOnScopeOrNullify('dateMaxView', dateMax);
         }
       }
     };
@@ -342,6 +351,14 @@ HistoryTab.prototype.angular = function (module) {
         $scope.filters.currencies = objCurrencies;
       }
     };
+
+    var setValidDateOnScopeOrNullify = function(key, value) {
+      if (isNaN(value) || value == null) {
+        $scope[key] = null;
+      } else {
+        $scope[key] = new Date(value);
+      }
+    }
 
     $scope.loadMore = function () {
       var dateMin;
@@ -384,11 +401,13 @@ HistoryTab.prototype.angular = function (module) {
 
             $scope.historyState = ($scope.history.length === newHistory.length) ? 'full' : 'ready';
             $scope.history = newHistory;
-            $scope.dateMinView = new Date(dateMin);
+            setValidDateOnScopeOrNullify('dateMinView', dateMin);
           }
         });
       }).request();
     }
+
+    $rpTracker.track('Page View', {'Page Name': 'History'});
   }]);
 };
 

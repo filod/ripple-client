@@ -18,8 +18,8 @@ BalanceTab.prototype.generateHtml = function ()
 
 BalanceTab.prototype.angular = function (module)
 {
-  module.controller('BalanceCtrl', ['$scope', 'rpId', 'rpNetwork',
-                                     function ($scope, $id, $network)
+  module.controller('BalanceCtrl', ['$scope', 'rpId', 'rpNetwork', 'rpTracker',
+                                     function ($scope, $id, $network, $rpTracker)
   {
     if (!$id.loginStatus) return $id.goId();
 
@@ -128,6 +128,8 @@ BalanceTab.prototype.angular = function (module)
       $scope.reset();
       $scope.loadMore();
     });
+
+    $rpTracker.track('Page View', {'Page Name': 'Balance'});
   }]);
 };
 

@@ -44,19 +44,6 @@ module.controller('StatusCtrl', ['$scope', '$element', '$compile', 'rpId',
     }
   }, true);
 
-  // Low balance indicator
-  $scope.$watch('account', function(){
-    if ($scope.account.reserve) {
-      var balance = Amount.from_json($scope.account.Balance);
-
-      if (balance.is_valid()) {
-        $scope.lowBalance = balance.compareTo($scope.account.reserve_low_balance) <= 0;
-      } else {
-        $scope.lowBalance = false;
-      }
-    }
-  }, true);
-
   $scope.logout = function () {
     // logout() assumes that we are outside of an Angular $apply(), so we need
     // to make sure that's actually the case otherwise we may get a
@@ -115,7 +102,9 @@ module.controller('StatusCtrl', ['$scope', '$element', '$compile', 'rpId',
   });
 
   // Default to disconnected
-  setConnectionStatus(false);
+  setTimeout(function() {
+    setConnectionStatus($scope.connected);
+  }, 1000 * 3);
 
   /**
    * Add the status message to the queue.
@@ -167,4 +156,9 @@ module.controller('StatusCtrl', ['$scope', '$element', '$compile', 'rpId',
       setTimeout(tick, tickInterval);
     }
   }
+
+  // Testing Hooks
+  this.setConnectionStatus = setConnectionStatus;
+  this.enqueue             = enqueue;
+  this.tick                = tick;
 }]);

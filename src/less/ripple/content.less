@@ -1,10 +1,48 @@
 @currencyFont: Consolas, "Bitstream Vera Sans Mono", "Andale Mono", Monaco, "DejaVu Sans Mono", "Lucida Console", monospace;
 
+// Temporary
+@media (max-width: @screen-xs-max) {
+  .t-login, .t-register {
+    header {
+      display: none;
+    }
+  }
+}
+
 body {
   color: #333;
 }
 
+nav + .content {
+  .border-radius(5px,5px,0,0);
+
+  @media (min-width: @screen-sm-max) {
+    -webkit-box-shadow:  -3px 0px 5px 0px rgba(0, 0, 0, 0.1);
+    box-shadow:  -3px 0px 5px 0px rgba(0, 0, 0, 0.1);
+  }
+}
+
 .content {
+  padding-top: @grid-gutter-width/2;
+  padding-bottom: @grid-gutter-width/2;
+  .rounded(5px);
+  min-height: 500px;
+  z-index: 10;
+
+  @media (max-width: @screen-xs-max) {
+    .rounded(0);
+    min-height: auto;
+  }
+
+  &.single {
+    margin-left: 15px;
+    margin-right: 15px;
+
+    @media (min-width: @screen-sm-max) {
+      margin: 20px 50px;
+    }
+  }
+
   h1 {
     font: 35px 'OpenSansLight';
     text-align: center;
@@ -34,13 +72,6 @@ body {
 
   group {
     display: block;
-
-    &.disconnected {
-      margin: 18px 0 0 0;
-    }
-  }
-
-  p {
   }
 
   label, p.label {
@@ -54,6 +85,15 @@ body {
     strong {
       font-family: 'OpenSansBold';
       font-weight: normal;
+    }
+
+    .spinner {
+      padding-right: 25px;
+
+      .spinnerInner {
+        left: -8px;
+        top: -20px;
+      }
     }
   }
 
@@ -71,60 +111,6 @@ body {
     background-image: url(../../img/throbber.gif);
     background-repeat: no-repeat;
     padding-left: 24px + 10px;
-  }
-
-  .table {
-    width: 100%;
-    border-spacing: 0;
-
-    caption {
-      text-align: left;
-      font: 20px 'OpenSansLight';
-      padding-top: 10px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid #eee;
-    }
-
-    th {
-      font: 16px 'OpenSansRegular';
-      font-weight: normal;
-      padding: 10px 5px;
-      border-bottom: 2px solid #cbcbcb;
-      text-align: left;
-    }
-
-    td {
-      padding: 15px 5px;
-      vertical-align: middle;
-    }
-
-    // A class for formatting columns with currency amounts
-    th.rpamount {
-      text-align: right;
-
-      &:after {
-        color: #fff;
-        content: "XXX";
-        font-family: @currencyFont;
-        font-size: 14px;
-        padding-left: 5px;
-      }
-    }
-    td.rpamount {
-      text-align: right;
-
-      .currency {
-        display: inline-block;
-        padding-left: 5px;
-        //color: #999;
-        opacity: 0.5;
-        font-family: @currencyFont;
-      }
-
-      // Dealing with large values:
-      white-space: nowrap;
-      text-overflow: ellipsis;
-    }
   }
 
   span.address {
@@ -145,6 +131,7 @@ body {
 
   .result-success h2.tx-status {
     background-color: #8DC86A;
+    padding: 10px;
   }
   .result-error h2.tx-status,
   .result-malformed h2.tx-status,
@@ -206,54 +193,31 @@ body {
 }
 
 // Tooltip
-.tooltip-inner {
-  min-width: 60px;
-  max-width: 330px;
-  padding: 3px 8px;
-  border: 1px solid #c3c3c3;
-  color: #333;
-  padding: 10px 15px;
-  font-size: 12px;
-  text-align: center;
-  text-decoration: none;
-  background-color: #fff;
-  .border-radius(@baseBorderRadius);
-  box-shadow: 2px 1px 10px #b5b5b5;
-}
 .tooltip {
   opacity: 1 !important;
 
-  &.top .tooltip-arrow {
-    display: none;
+  .tooltip-inner {
+    background: #fff;
+    border: 1px solid #e7e7e7;
+    .border-radius(3px,3px,3px,3px);
+    color: #666;
+    padding: 8px 15px;
   }
 
-  &.top:after {
-    left: 50%;
-    bottom: -4px;
-    margin-left: -20px;
-    border-top: 10px solid #fff;
-    border-left: 20px solid transparent;
-    border-right: 20px solid transparent;
-    content: "";
-    display: inline-block;
-    position: absolute;
+  &.top > .tooltip-arrow {
+    border-top-color: #e7e7e7;
   }
-  &.top:before {
-    left: 50%;
-    bottom: -5px;
-    margin-left: -20px;
-    border-top: 10px solid #c3c3c3;
-    border-left: 20px solid transparent;
-    border-right: 20px solid transparent;
-    content: "";
-    display: inline-block;
-    position: absolute;
-  }
+
 }
 
 // Popover
 .popover {
   width: 400px;
+  padding: 0;
+
+  &.bottom .arrow:after {
+    border-bottom-color: #f7f7f7;
+  }
 
   .popover-content {
     font-size: 14px;
@@ -273,4 +237,11 @@ body {
   & > .active {
     cursor: default;
   }
+}
+
+.insig {
+  color: #B6B6B6;
+}
+a.danger {
+  color: #E40000;
 }

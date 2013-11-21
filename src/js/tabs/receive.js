@@ -11,8 +11,8 @@ util.inherits(ReceiveTab, Tab);
 ReceiveTab.prototype.mainMenu = 'receive';
 
 ReceiveTab.prototype.angular = function (module) {
-  module.controller('ReceiveCtrl', ['$scope', 'rpId',
-                                     function ($scope, $id)
+  module.controller('ReceiveCtrl', ['$scope', 'rpId', 'rpTracker',
+                                     function ($scope, $id, $rpTracker)
   {
     if (!$id.loginStatus) return $id.goId();
 
@@ -52,6 +52,8 @@ ReceiveTab.prototype.angular = function (module) {
         }, 800);
     }
     */
+
+    $rpTracker.track('Page View', {'Page Name': 'Receive'});
   }]);
 };
 

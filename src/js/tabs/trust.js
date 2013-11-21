@@ -20,8 +20,8 @@ TrustTab.prototype.generateHtml = function ()
 
 TrustTab.prototype.angular = function (module)
 {
-  module.controller('TrustCtrl', ['$scope', '$timeout', '$routeParams', 'rpId', '$filter', 'rpNetwork',
-                                  function ($scope, $timeout, $routeParams, $id, $filter, $network)
+  module.controller('TrustCtrl', ['$scope', '$timeout', '$routeParams', 'rpId', '$filter', 'rpNetwork', 'rpTracker',
+                                  function ($scope, $timeout, $routeParams, $id, $filter, $network, $rpTracker)
   {
     if (!$id.loginStatus) return $id.goId();
 
@@ -192,7 +192,12 @@ TrustTab.prototype.angular = function (module)
             }
           });
         })
-        .on('error', function(){
+        .on('success', function(res){
+          $scope.$apply(function () {
+            setEngineStatus(res, true);
+          });
+        })
+        .on('error', function(res){
           setImmediate(function () {
             $scope.$apply(function () {
               $scope.mode = 'error';
@@ -238,6 +243,9 @@ TrustTab.prototype.angular = function (module)
           break;
         case 'tec':
           $scope.tx_result = 'failed';
+          break;
+        case 'tel':
+          $scope.tx_result = "local";
           break;
         case 'tep':
           console.warn('Unhandled engine status encountered!');
@@ -300,6 +308,8 @@ TrustTab.prototype.angular = function (module)
     $scope.currency_query = webutil.queryFromOptions($scope.currencies);
 
     $scope.reset();
+
+    $rpTracker.track('Page View', {'Page Name': 'Trust'});
   }]);
 };
 

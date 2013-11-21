@@ -16,8 +16,8 @@ SecurityTab.prototype.generateHtml = function ()
 };
 
 SecurityTab.prototype.angular = function (module) {
-  module.controller('SecurityCtrl', ['$scope', 'rpId', 'rpOldBlob',
-                                     function ($scope, $id, $blob)
+  module.controller('SecurityCtrl', ['$scope', 'rpId', 'rpOldBlob', 'rpTracker',
+                                     function ($scope, $id, $blob, $rpTracker)
   {
     if (!$id.loginStatus) return $id.goId();
 
@@ -31,6 +31,8 @@ SecurityTab.prototype.angular = function (module) {
         $scope.enc = $blob.enc($id.username.toLowerCase(), $id.password, $scope.userBlob);
       }
     }
+
+    $rpTracker.track('Page View', {'Page Name': 'Security'});
   }]);
 };
 

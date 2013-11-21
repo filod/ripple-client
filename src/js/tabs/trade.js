@@ -10,7 +10,7 @@ var TradeTab = function ()
 
 util.inherits(TradeTab, Tab);
 
-TradeTab.prototype.mainMenu = 'advanced';
+TradeTab.prototype.mainMenu = 'trade';
 
 TradeTab.prototype.generateHtml = function ()
 {
@@ -25,12 +25,11 @@ TradeTab.prototype.extraRoutes = [
 
 TradeTab.prototype.angular = function(module)
 {
-  module.controller('TradeCtrl', ['rpBooks', '$scope', 'rpId', 'rpNetwork', '$routeParams', '$location', '$filter',
-                                  function (books, $scope, $id, $network, $routeParams, $location, $filter)
+  module.controller('TradeCtrl', ['rpBooks', '$scope', 'rpId', 'rpNetwork', '$routeParams', '$location', '$filter', 'rpTracker',
+                                  function (books, $scope, $id, $network, $routeParams, $location, $filter, $rpTracker)
   {
     if (!$id.loginStatus) return $id.goId();
 
-    $scope.mode = "confirm";
     $scope.bookFormatted = {};
 
     var pairs = $scope.pairs_all;
@@ -48,6 +47,19 @@ TradeTab.prototype.angular = function(module)
       var type = keepPair ? $scope.order.type : 'buy';
 
       if ($scope.orderForm) $scope.orderForm.$setPristine();
+
+      // Decide what listing to show
+      var listing;
+      if ($scope.order) {
+        listing = $scope.order.listing;
+      }
+      else if(store.get('ripple_trade_listing')) {
+        listing = store.get('ripple_trade_listing');
+      }
+      else {
+        listing = 'orderbook';
+      }
+
       $scope.mode = "trade";
       $scope.order = {
         type: type,
@@ -59,7 +71,7 @@ TradeTab.prototype.angular = function(module)
         second_currency: pair.slice(4, 7),
         first_issuer: fIssuer,
         second_issuer: sIssuer,
-        listing: $scope.order ? $scope.order.listing : 'my',
+        listing: listing,
 
         // This variable is true if both the pair and the issuers are set to
         // valid values. It is used to enable or disable all the functionality
@@ -72,13 +84,9 @@ TradeTab.prototype.angular = function(module)
 
     $scope.setListing = function(listing){
       $scope.order.listing = listing;
-      $scope.order.userSetListing = true;
-    };
 
-    $scope.$watch('offers',function(){
-      if (!$scope.order.userSetListing)
-        $scope.order.listing = $.isEmptyObject($scope.offers) ? 'orderbook' : 'my';
-    }, true);
+      store.set('ripple_trade_listing', listing);
+    };
 
     $scope.back = function () {
       $scope.mode = "trade";
@@ -93,21 +101,32 @@ TradeTab.prototype.angular = function(module)
         $scope.order.sell_amount = $scope.order.first_amount;
         $scope.order.buy_amount = $scope.order.second_amount;
       }
+
+      $rpTracker.track('Trade order confirmation page', {
+        'Currency pair': $scope.order.currency_pair
+      });
     };
 
     $scope.cancel_order = function ()
     {
       var tx = $network.remote.transaction();
       tx.offer_cancel($id.account, this.entry.seq);
-      tx.on('proposed', function () {
-        $scope.$apply(function () {
+      tx.on('success', function(){
+        $rpTracker.track('Trade order cancellation', {
+          'Status': 'success'
         });
       });
-      tx.on('error', function () {
+      tx.on('error', function (err) {
         setImmediate(function () {
           $scope.$apply(function () {
-            $scope.mode = "error";
+            $scope.mode = "done";
+            setEngineStatus(err, false);
           });
+        });
+
+        $rpTracker.track('Trade order cancellation', {
+          'Status': 'error',
+          'Message': err
         });
       });
       tx.submit();
@@ -148,11 +167,24 @@ TradeTab.prototype.angular = function(module)
           }
         });
       });
-      tx.on('error', function () {
+      tx.on('success', function(){
+        $rpTracker.track('Trade order result', {
+          'Status': 'success',
+          'Currency pair': $scope.order.currency_pair
+        });
+      });
+      tx.on('error', function (err) {
         setImmediate(function () {
           $scope.$apply(function () {
-            $scope.mode = "error";
+            $scope.mode = "done";
+            setEngineStatus(err, false);
           });
+        });
+
+        $rpTracker.track('Trade order result', {
+          'Status': 'error',
+          'Message': err,
+          'Currency pair': $scope.order.currency_pair
         });
       });
       tx.submit();
@@ -191,8 +223,14 @@ TradeTab.prototype.angular = function(module)
         case 'tec':
           $scope.tx_result = "claim";
           break;
-        case 'tep':
-          console.warn("Unhandled engine status encountered!");
+        case 'tel':
+          $scope.tx_result = "local";
+          break;
+        //case 'tep':
+        default:
+          $scope.tx_result = "unknown";
+          console.warn("Unhandled engine status encountered:"+res.engine_result);
+          break;
       }
     }
 
@@ -274,18 +312,21 @@ TradeTab.prototype.angular = function(module)
       var order = $scope.order;
 
       var pair = order.currency_pair;
-      if ("string" !== typeof pair ||
-          !pair.match(/^[a-z]{3}\/[a-z]{3}$/i)) {
+
+      // Invalid currency pair
+      if ("string" !== typeof pair || !pair.match(/^[a-z]{3}\/[a-z]{3}$/i)) {
         order.first_currency = 'XRP';
         order.second_currency = 'XRP';
         order.valid_settings = false;
         return;
       }
+
       var first_currency = order.first_currency = pair.slice(0, 3);
       var second_currency = order.second_currency = pair.slice(4, 7);
-
       var first_issuer = ripple.UInt160.from_json(order.first_issuer);
       var second_issuer = ripple.UInt160.from_json(order.second_issuer);
+
+      // Invalid issuers
       if ((first_currency !== 'XRP' && !first_issuer.is_valid()) ||
           (second_currency !== 'XRP' && !second_issuer.is_valid())) {
         order.valid_settings = false;
@@ -297,7 +338,8 @@ TradeTab.prototype.angular = function(module)
         order.buy_currency = order.first_currency;
         order.sell_issuer = order.second_issuer;
         order.buy_issuer = order.first_issuer;
-      } else {
+      }
+      else {
         order.sell_currency = order.first_currency;
         order.buy_currency = order.second_currency;
         order.sell_issuer = order.first_issuer;
@@ -305,18 +347,24 @@ TradeTab.prototype.angular = function(module)
       }
       order.valid_settings = true;
 
+      // Remember selection
       var key = "" +
-            order.first_currency +
-            (order.first_currency === 'XRP' ? "" : "/" +order.first_issuer) +
-            ":" +
-            order.second_currency +
-            (order.second_currency === 'XRP' ? "" : "/" +order.second_issuer);
+        order.first_currency +
+        (order.first_currency === 'XRP' ? "" : "/" +order.first_issuer) +
+        ":" +
+        order.second_currency +
+        (order.second_currency === 'XRP' ? "" : "/" +order.second_issuer);
 
       if (order.prev_settings !== key) {
         loadOffers();
 
         order.prev_settings = key;
       }
+
+      // Update buy/sell
+      $scope.update_first();
+      $scope.update_price();
+      $scope.update_second();
 
       updateCanBuySell();
     }
@@ -454,17 +502,17 @@ TradeTab.prototype.angular = function(module)
 
         if ($scope.book.bids) {
           $scope.bookFormatted.bids.forEach(function(order){
-            order.sum = rpamountFilter(order.sum,{'rel_precision': 4});
-            order.TakerPays = rpamountFilter(order.TakerPays,{'rel_precision': 4});
-            order.price = rpamountFilter(order.price,{'rel_precision': 4, 'rel_min_precision': 2});
+            order.sum = rpamountFilter(order.sum,{'precision':5,'min_precision':5,'max_sig_digits':20});
+            order.TakerPays = rpamountFilter(order.TakerPays,{'precision':5,'min_precision':5,'max_sig_digits':20});
+            order.price = rpamountFilter(order.price,{'precision':5,'min_precision':5,'max_sig_digits':20});
           });
         }
 
         if ($scope.book.asks) {
           $scope.bookFormatted.asks.forEach(function(order){
-            order.sum = rpamountFilter(order.sum,{'rel_precision': 4});
-            order.TakerGets = rpamountFilter(order.TakerGets,{'rel_precision': 4});
-            order.price = rpamountFilter(order.price,{'rel_precision': 4, 'rel_min_precision': 2});
+            order.sum = rpamountFilter(order.sum,{'precision':5,'min_precision':5,'max_sig_digits':20});
+            order.TakerGets = rpamountFilter(order.TakerGets,{'precision':5,'min_precision':5,'max_sig_digits':20});
+            order.price = rpamountFilter(order.price,{'precision':5,'min_precision':5,'max_sig_digits':20});
           });
         }
       }
@@ -533,6 +581,7 @@ TradeTab.prototype.angular = function(module)
       updateSettings();
     }
 
+    $rpTracker.track('Page View', {'Page Name': 'Trade'});
   }]);
 };
 

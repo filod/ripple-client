@@ -19,8 +19,8 @@ RegisterTab.prototype.generateHtml = function ()
 };
 
 RegisterTab.prototype.angular = function (module) {
-  module.controller('RegisterCtrl', ['$scope', '$location', 'rpId',
-                                     function ($scope, $location, $id)
+  module.controller('RegisterCtrl', ['$scope', '$location', 'rpId', 'rpTracker',
+                                     function ($scope, $location, $id, $rpTracker)
   {
     if ($id.loginStatus) {
       $location.path('/balance');
@@ -45,6 +45,7 @@ RegisterTab.prototype.angular = function (module) {
       $scope.mode = 'form';
       $scope.showMasterKeyInput = false;
       $scope.submitLoading = false;
+      $scope.track = true;
 
       if ($scope.registerForm) $scope.registerForm.$setPristine(true);
     };
@@ -92,6 +93,11 @@ RegisterTab.prototype.angular = function (module) {
         if (!regInProgress) {
           if (!exists) {
             regInProgress = true;
+
+            Options.mixpanel.track = $scope.track;
+
+            store.set('ripple_settings', JSON.stringify(Options));
+
             $scope.register();
           } else {
             $id.login($scope.username, $scope.password1, function (error) {
@@ -116,10 +122,20 @@ RegisterTab.prototype.angular = function (module) {
       $scope.mode = 'form';
       $scope.reset();
 
+      $rpTracker.track('Sign Up', {
+        'Used key': !!$scope.masterkey,
+        'Password strength': $scope.strength,
+        'Blob': $scope.blobBackendCollection.something.name,
+        'Showed secret key': $scope.showSecret,
+        'Showed password': $scope.showPassword
+      });
+
       $location.path('/balance');
     };
 
     $scope.reset();
+
+    $rpTracker.track('Page View', {'Page Name': 'Register'});
   }]);
 };
 

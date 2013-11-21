@@ -56,7 +56,11 @@ module.controller('AppCtrl', ['$rootScope', '$compile', 'rpId', 'rpNetwork',
     myHandleAccountEntry = handleAccountEntry;
 
     accountObj.on('transaction', myHandleAccountEvent);
-    accountObj.on('entry', myHandleAccountEntry);
+    accountObj.on('entry', function(data){
+      $scope.$apply(function () {
+        myHandleAccountEntry(data);
+      });
+    });
 
     accountObj.entry(function (err, entry) {
       if (err) {
@@ -73,7 +77,9 @@ module.controller('AppCtrl', ['$rootScope', '$compile', 'rpId', 'rpNetwork',
     remote.request_account_tx({
       'account': data.account,
       'ledger_index_min': -1,
-      'limit': Options.transactions_per_page
+      'descending': true,
+      'limit': Options.transactions_per_page,
+      'count': true
     })
       .on('success', handleAccountTx)
       .on('error', handleAccountTxError).request();
@@ -131,7 +137,8 @@ module.controller('AppCtrl', ['$rootScope', '$compile', 'rpId', 'rpNetwork',
         var offer = {
           seq: +offerData.seq,
           gets: ripple.Amount.from_json(offerData.taker_gets),
-          pays: ripple.Amount.from_json(offerData.taker_pays)
+          pays: ripple.Amount.from_json(offerData.taker_pays),
+          flags: offerData.flags
         };
 
         updateOffer(offer);
@@ -152,26 +159,24 @@ module.controller('AppCtrl', ['$rootScope', '$compile', 'rpId', 'rpNetwork',
   function handleAccountEntry(data)
   {
     var remote = $net.remote;
-    $scope.$apply(function () {
-      $scope.account = data;
+    $scope.account = data;
 
-      // As per json wire format convention, real ledger entries are CamelCase,
-      // e.g. OwnerCount, additional convenience fields are lower case, e.g.
-      // reserve, max_spend.
-      var reserve_base = Amount.from_json(""+remote._reserve_base),
-          reserve_inc  = Amount.from_json(""+remote._reserve_inc),
-          owner_count  = $scope.account.OwnerCount || 0;
-      $scope.account.reserve_base = reserve_base;
-      $scope.account.reserve = reserve_base.add(reserve_inc.product_human(owner_count));
-      $scope.account.reserve_to_add_trust = reserve_base.add(reserve_inc.product_human(owner_count+1));
-      $scope.account.reserve_low_balance = $scope.account.reserve.product_human(2);
+    // As per json wire format convention, real ledger entries are CamelCase,
+    // e.g. OwnerCount, additional convenience fields are lower case, e.g.
+    // reserve, max_spend.
+    var reserve_base = Amount.from_json(""+remote._reserve_base),
+        reserve_inc  = Amount.from_json(""+remote._reserve_inc),
+        owner_count  = $scope.account.OwnerCount || 0;
+    $scope.account.reserve_base = reserve_base;
+    $scope.account.reserve = reserve_base.add(reserve_inc.product_human(owner_count));
+    $scope.account.reserve_to_add_trust = reserve_base.add(reserve_inc.product_human(owner_count+1));
+    $scope.account.reserve_low_balance = $scope.account.reserve.product_human(2);
 
-      // Maximum amount user can spend
-      var bal = Amount.from_json(data.Balance);
-      $scope.account.max_spend = bal.subtract($scope.account.reserve);
+    // Maximum amount user can spend
+    var bal = Amount.from_json(data.Balance);
+    $scope.account.max_spend = bal.subtract($scope.account.reserve);
 
-      $scope.loadState['account'] = true;
-    });
+    $scope.loadState['account'] = true;
   }
 
   function handleAccountTx(data)
@@ -213,6 +218,11 @@ module.controller('AppCtrl', ['$rootScope', '$compile', 'rpId', 'rpNetwork',
     if (processedTxn) {
       var transaction = processedTxn.transaction;
 
+      // Update account
+      if (processedTxn.accountRoot) {
+        handleAccountEntry(processedTxn.accountRoot);
+      }
+
       // Show status notification
       if (processedTxn.tx_result === "tesSUCCESS" &&
           transaction &&
@@ -249,7 +259,7 @@ module.controller('AppCtrl', ['$rootScope', '$compile', 'rpId', 'rpNetwork',
               gets: effect.gets,
               pays: effect.pays,
               deleted: effect.deleted,
-              flags: processedTxn.transaction.flags
+              flags: effect.flags
             };
 
             updateOffer(offer);
@@ -261,7 +271,7 @@ module.controller('AppCtrl', ['$rootScope', '$compile', 'rpId', 'rpNetwork',
 
   function updateOffer(offer)
   {
-    if (offer.flags && offer.flags === ripple.Transaction.flags.OfferCreate.Sell) {
+    if (offer.flags && offer.flags === ripple.Remote.flags.offer.Sell) {
       offer.type = 'sell';
       offer.first = offer.gets;
       offer.second = offer.pays;
@@ -336,7 +346,6 @@ module.controller('AppCtrl', ['$rootScope', '$compile', 'rpId', 'rpNetwork',
     }
 
     $(balance.components).sort(function(a,b){
-      debugger
       return a.compareTo(b);
     });
 
@@ -386,22 +395,16 @@ module.controller('AppCtrl', ['$rootScope', '$compile', 'rpId', 'rpNetwork',
   $scope.currencies = $scope.currencies_all.slice(1);
   $scope.pairs = $scope.pairs_all.slice(1);
 
-  // Enable screen
-  $('body').addClass('loaded');
+  $scope.app_loaded = true;
 
+  // Moved this to the run block
   // Nav links same page click fix
-  $('nav a').click(function(){
-    if (location.hash === this.hash) {
-      location.href="#/";
-      location.href=this.href;
-    }
-  });
-
-  // Add status box to DOM
-  var template = require('../../jade/client/status.jade')();
-  $compile(template)($scope, function (el, $scope) {
-    el.appendTo('header');
-  });
+  // $('nav a').click(function(){
+  //   if (location.hash == this.hash) {
+  //     location.href="#/";
+  //     location.href=this.href;
+  //   }
+  // });
 
   $scope.$on('$idAccountLoad', function (e, data) {
     // Server is connected
@@ -430,4 +433,24 @@ module.controller('AppCtrl', ['$rootScope', '$compile', 'rpId', 'rpNetwork',
   $net.listenId($id);
   $net.init();
   $id.init();
+
+  // Testing hooks
+
+  this.reset                  =  reset;
+  this.handleAccountLoad      =  handleAccountLoad;
+  this.handleAccountUnload    =  handleAccountUnload;
+  this.handleRippleLines      =  handleRippleLines;
+  this.handleRippleLinesError =  handleRippleLinesError;
+  this.handleOffers           =  handleOffers;
+  this.handleOffersError      =  handleOffersError;
+  this.handleAccountEntry     =  handleAccountEntry;
+  this.handleAccountTx        =  handleAccountTx;
+  this.handleAccountTxError   =  handleAccountTxError;
+  this.handleAccountEvent     =  handleAccountEvent;
+  this.processTxn             =  processTxn;
+  this.updateOffer            =  updateOffer;
+  this.updateLines            =  updateLines;
+  this.updateRippleBalance    =  updateRippleBalance;
+  this.compare                =  compare;
+  this.handleFirstConnection  =  handleFirstConnection;
 }]);
