@@ -382,10 +382,6 @@ SendTab.prototype.angular = function (module)
       if (!ripple.UInt160.is_valid(recipient)) {
         return;
       }
-      // Recipient + currency
-      var recu = recipient.length + "|" + recipient + currency;
-      if (send.last_recu === recu) return;
-      send.last_recu = recu;
 
       $scope.update_amount();
     };
@@ -644,7 +640,7 @@ SendTab.prototype.angular = function (module)
 
         $rpTracker.track('Send pathfind', {
           'Status': 'error',
-          'Message': res,
+          'Message': res.engine_result,
           'Currency': $scope.send.currency_code,
           'Address Type': $scope.send.bitcoin ? 'bitcoin' :
             $scope.send.federation ? 'federation' : 'ripple',
@@ -914,7 +910,7 @@ SendTab.prototype.angular = function (module)
 
         $rpTracker.track('Send result', {
           'Status': 'error',
-          'Message': res,
+          'Message': res.engine_result,
           'Currency': $scope.send.currency_code,
           'Address Type': $scope.send.bitcoin ? 'bitcoin' :
               $scope.send.federation ? 'federation' : 'ripple',
